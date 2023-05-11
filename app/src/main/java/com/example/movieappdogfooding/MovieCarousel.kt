@@ -6,10 +6,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.rememberScrollableState
 import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,29 +32,42 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.DrawModifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.LinearGradient
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutModifier
 import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.platform.InspectableModifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import kotlin.math.roundToInt
 
 
+val posterAspectRatio = 0.674f
+
 @androidx.compose.runtime.Composable
 fun Screen() {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
     var offset by remember { mutableStateOf(0f) }
     val ctrlr = rememberScrollableState {
         offset += it
         it
     }
-    Row(
+    Box(
         Modifier
             .background(Color.Black)
             .fillMaxSize()
@@ -61,19 +76,48 @@ fun Screen() {
                 orientation = Orientation.Horizontal,
             )
     ) {
-        Row(Modifier.offset(getX = { offset }, getY = { 0f })) {
-            MoviePoster()
-            MoviePoster()
-            MoviePoster()
+        movies.forEachIndexed { index, movie ->
+            AsyncImage(
+                model = movie.bgUrl, contentDescription = "", modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(posterAspectRatio)
+            )
+        }
+
+        Spacer(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.White
+                        ),
+                        startY = 0f,
+                        endY = 100f
+                    )
+                )
+                .fillMaxWidth()
+                .fillMaxHeight(0.3f)
+        )
+
+        movies.forEachIndexed { index, movie ->
+            MoviePoster(
+                movie = movie,
+                modifier = Modifier
+                    .offset(getX = { offset.dp + (screenWidth * index) }, getY = { 0.dp })
+                    .width(screenWidth * .75f)
+
+            )
         }
     }
 }
 
 fun Modifier.offset(
-    getX: () -> Float,
-    getY: () -> Float,
+    getX: () -> Dp,
+    getY: () -> Dp,
     rtlAware: Boolean = true
-) = this then object: LayoutModifier {
+) = this then object : LayoutModifier {
     override fun MeasureScope.measure(
         measurable: Measurable,
         constraints: Constraints
@@ -81,9 +125,9 @@ fun Modifier.offset(
         val placeable = measurable.measure(constraints)
         return layout(placeable.width, placeable.height) {
             if (rtlAware) {
-                placeable.placeRelative(getX().roundToInt(), getY().roundToInt())
+                placeable.placeRelative(getX().roundToPx(), getY().roundToPx())
             } else {
-                placeable.place(getX().roundToInt(), getY().roundToInt())
+                placeable.place(getX().roundToPx(), getY().roundToPx())
             }
         }
     }
@@ -91,43 +135,36 @@ fun Modifier.offset(
 }
 
 @Composable
-fun MoviePoster(modifier: Modifier = Modifier) {
-    val screenSize = LocalConfiguration.current.screenWidthDp.dp * .75f
+fun MoviePoster(movie: Movie, modifier: Modifier = Modifier) {
 
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .width(screenSize)
             .background(Color.White)
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(20.dp)
     ) {
         AsyncImage(
-            model = "https://cdn.shopify.com/s/files/1/1057/4964/products/Joker-Vintage-Movie-Poster-Original-Bus-Stop-48x70_9824def5-900b-4d29-ae2d-0277316895a0.jpg?v=1668661284",
+            model = movie.posterUrl,
             contentScale = ContentScale.Crop,
             contentDescription = "",
             modifier = Modifier
-                .width(180.dp)
-                .aspectRatio(.674f)
+                .fillMaxWidth()
+                .aspectRatio(posterAspectRatio)
                 .clip(RoundedCornerShape(10.dp))
         )
 
         Text(
-            text = "Joker",
+            text = movie.title,
             fontSize = 24.sp,
             color = Color.Black
         )
 
         Row {
-            Chip("Action")
-            Chip("Drama")
-            Chip("History")
+            for (chip in movie.chips) {
+                Chip(chip)
+            }
         }
         StarRating(9.0f)
-        Spacer(modifier = Modifier.height(30.dp))
-        BuyTicketButton(buttonClick = {
-
-        })
     }
 }
 
